@@ -1,43 +1,49 @@
-import requests
-import os
-from dotenv import load_dotenv
+import streamlit as st
+st.write("APP RUNNING")
+import streamlit as st
+from tmdb_api import search_movie, format_movie_info
 
-# Load file .env
-load_dotenv()
+st.set_page_config(page_title="Movie Info Chatbot", page_icon="🎥")
 
-API_KEY = "ad1e16d747518806231d6c8ffcad8627"
-BASE_URL = "https://api.themoviedb.org/3"
+st.title("🎥 Movie Info Chatbot")
+st.caption("Ask me about any movie! Just type the title.")
 
-def search_movie(title):
-    url = f"{BASE_URL}/search/movie"
+# Menyimpan histori chat
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 
-    params = {
-        "query": title,
-        "api_key": API_KEY
-    }
+# Menampilkan histori chat sebelumnya
+for msg in st.session_state.messages:
+    with st.chat_message(msg["role"]):
+        st.markdown(msg["content"])
 
-    response = requests.get(url, params=params)
+# Input user
+if prompt := st.chat_input("Type a movie title..."):
 
-    if response.status_code == 200:
-        results = response.json().get("results", [])
+    # Simpan pesan user
+    st.session_state.messages.append({
+        "role": "user",
+        "content": prompt
+    })
 
-        if results:
-            return results[0]
+    # Tampilkan pesan user
+    with st.chat_message("user"):
+        st.markdown(prompt)
 
-    return None
+    # Cari data film
+    movie = search_movie(prompt)
 
+    if movie:
+        reply = format_movie_info(movie)
+    else:
+        reply = f"Sorry, I couldn't find anything for **{prompt}**."
 
-def format_movie_info(movie):
-    title = movie.get("title", "Unknown Title")
-    release_date = movie.get("release_date", "N/A")
-    year = release_date[:4] if release_date != "N/A" else "N/A"
-    rating = movie.get("vote_average", "N/A")
-    overview = movie.get("overview", "No description available.")
+    # Simpan balasan bot
+    st.session_state.messages.append({
+        "role": "assistant",
+        "content": reply
+    })
 
-    return f"""
-🎬 **{title}** ({year})
-
-⭐ Rating: {rating}/10
-
-📖 {overview}
-"""
+    # Tampilkan balasan bot
+    with st.chat_message("assistant"):
+        st.markdown(reply)
